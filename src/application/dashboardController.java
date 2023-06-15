@@ -70,8 +70,6 @@ public class dashboardController implements Initializable {
 
     @FXML
     private AnchorPane home_form;
-    
-   
 
     @FXML
     private Label home_totalEmployees;
@@ -199,6 +197,8 @@ public class dashboardController implements Initializable {
     private ResultSet result;
 
     private Image image;
+    
+    
 
     public void homeTotalEmployees() {
 
@@ -222,7 +222,46 @@ public class dashboardController implements Initializable {
         }
 
     }
+    public void assignUsername(String username) {
+        // SQL query to insert a new row into emp_info with the given username
+    	String sql = "INSERT INTO emp_info (username, email, password, question, answer, date, update_date) VALUES (?, NULL, NULL, NULL, NULL, NULL, NULL)";
 
+        try {
+            // Establish a connection to the database
+        	 connect = database.connectDb();
+
+            // Prepare the SQL statement with the username parameter
+            prepare = connect.prepareStatement(sql);
+            prepare.setString(1, username);
+           
+
+            // Execute the SQL statement to insert the new row
+            prepare.executeUpdate();
+
+            // Display a success message
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Information Message");
+            alert.setHeaderText(null);
+            alert.setContentText("Successfully assigned username: " + username);
+            alert.showAndWait();
+
+        } catch (Exception e) {
+            // Display an error message if there was an exception
+            e.printStackTrace();
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Error Message");
+            alert.setHeaderText(null);
+            alert.setContentText("Failed to assign username: " + username);
+            alert.showAndWait();
+        } finally {
+            // Close the database connection and prepared statement
+            try { if (result != null) result.close(); } catch (Exception e) {}
+            try { if (prepare != null) prepare.close(); } catch (Exception e) {}
+            try { if (statement != null) statement.close(); } catch (Exception e) {}
+            try { if (connect != null) connect.close(); } catch (Exception e) {}
+        }
+    }
+    
     public void homeEmployeeTotalPresent() {
 
         String sql = "SELECT COUNT(id) FROM employee_info";
@@ -291,92 +330,102 @@ public class dashboardController implements Initializable {
 
     }
 
+    
+
     public void addEmployeeAdd() {
 
-        Date date = new Date();
-        java.sql.Date sqlDate = new java.sql.Date(date.getTime());
+    Date date = new Date();
+    java.sql.Date sqlDate = new java.sql.Date(date.getTime());
+    String sql = "INSERT INTO employee (username, employee_id, firstName, lastName, gender, phoneNum, position, image, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        String sql = "INSERT INTO employee "
-                + "(employee_id,firstName,lastName,gender,phoneNum,position,image,date) "
-                + "VALUES(?,?,?,?,?,?,?,?)";
+    connect = database.connectDb();
 
-        connect = database.connectDb();
+    try {
+        Alert alert;
+        if (addEmployee_employeeID.getText().isEmpty()
+                || addEmployee_firstName.getText().isEmpty()
+                || addEmployee_lastName.getText().isEmpty()
+                || addEmployee_gender.getSelectionModel().getSelectedItem() == null
+                || addEmployee_phoneNum.getText().isEmpty()
+                || addEmployee_position.getSelectionModel().getSelectedItem() == null
+                || getData.path == null || getData.path == "") {
+            alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Error Message");
+            alert.setHeaderText(null);
+            alert.setContentText("Please fill all blank fields");
+            alert.showAndWait();
+        } else if (!addEmployee_firstName.getText().matches("^[a-zA-Z]*$") || !addEmployee_lastName.getText().matches("^[a-zA-Z]*$")) {
+            alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Error Message");
+            alert.setHeaderText(null);
+            alert.setContentText("First name and last name should contain only alphabets!");
+            alert.showAndWait();
+        } else if (!addEmployee_phoneNum.getText().matches("^\\d{10}$")) {
+            alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Error Message");
+            alert.setHeaderText(null);
+            alert.setContentText("Phone number should be a 10-digit number!");
+            alert.showAndWait();
+        } else {
+            String check = "SELECT employee_id FROM employee WHERE employee_id = '"
+                    + addEmployee_employeeID.getText() + "'";
 
-        try {
-            Alert alert;
-            if (addEmployee_employeeID.getText().isEmpty()
-                    || addEmployee_firstName.getText().isEmpty()
-                    || addEmployee_lastName.getText().isEmpty()
-                    || addEmployee_gender.getSelectionModel().getSelectedItem() == null
-                    || addEmployee_phoneNum.getText().isEmpty()
-                    || addEmployee_position.getSelectionModel().getSelectedItem() == null
-                    || getData.path == null || getData.path == "") {
+            statement = connect.createStatement();
+            result = statement.executeQuery(check);
+
+            if (result.next()) {
                 alert = new Alert(AlertType.ERROR);
                 alert.setTitle("Error Message");
                 alert.setHeaderText(null);
-                alert.setContentText("Please fill all blank fields");
+                alert.setContentText("Employee ID: " + addEmployee_employeeID.getText() + " already exists!");
                 alert.showAndWait();
             } else {
 
-                String check = "SELECT employee_id FROM employee WHERE employee_id = '"
-                        + addEmployee_employeeID.getText() + "'";
+                prepare = connect.prepareStatement(sql);
+                prepare.setString(1, addEmployee_firstName.getText() + "123");
+                prepare.setString(2, addEmployee_employeeID.getText());
+                prepare.setString(3, addEmployee_firstName.getText());
+                prepare.setString(4, addEmployee_lastName.getText());
+                prepare.setString(5, (String) addEmployee_gender.getSelectionModel().getSelectedItem());
+                prepare.setString(6, addEmployee_phoneNum.getText());
+                prepare.setString(7, (String) addEmployee_position.getSelectionModel().getSelectedItem());
+                String uri = getData.path;
+                uri = uri.replace("\\", "\\\\");
 
-                statement = connect.createStatement();
-                result = statement.executeQuery(check);
+                prepare.setString(8, uri);
+                prepare.setString(9, String.valueOf(sqlDate));
+                prepare.executeUpdate();
+                String username = addEmployee_firstName.getText() + "123";
+                assignUsername(username);
 
-                if (result.next()) {
-                    alert = new Alert(AlertType.ERROR);
-                    alert.setTitle("Error Message");
-                    alert.setHeaderText(null);
-                    alert.setContentText("Employee ID: " + addEmployee_employeeID.getText() + " was already exist!");
-                    alert.showAndWait();
-                } else {
+                String insertInfo = "INSERT INTO employee_info "
+                        + "(employee_id,firstName,lastName,position,salary,date) "
+                        + "VALUES(?,?,?,?,?,?)";
 
-                    prepare = connect.prepareStatement(sql);
-                    prepare.setString(1, addEmployee_employeeID.getText());
-                    prepare.setString(2, addEmployee_firstName.getText());
-                    prepare.setString(3, addEmployee_lastName.getText());
-                    prepare.setString(4, (String) addEmployee_gender.getSelectionModel().getSelectedItem());
-                    prepare.setString(5, addEmployee_phoneNum.getText());
-                    prepare.setString(6, (String) addEmployee_position.getSelectionModel().getSelectedItem());
+                prepare = connect.prepareStatement(insertInfo);
+                prepare.setString(1, addEmployee_employeeID.getText());
+                prepare.setString(2, addEmployee_firstName.getText());
+                prepare.setString(3, addEmployee_lastName.getText());
+                prepare.setString(4, (String) addEmployee_position.getSelectionModel().getSelectedItem());
+                prepare.setString(5, "0.0");
+                prepare.setString(6, String.valueOf(sqlDate));
+                prepare.executeUpdate();
 
-                    String uri = getData.path;
-                    uri = uri.replace("\\", "\\\\");
+                alert = new Alert(AlertType.INFORMATION);
+                alert.setTitle("Information Message");
+                alert.setHeaderText(null);
+                alert.setContentText("Successfully Added!");
+                alert.showAndWait();
 
-                    prepare.setString(7, uri);
-                    prepare.setString(8, String.valueOf(sqlDate));
-                    prepare.executeUpdate();
-
-                    String insertInfo = "INSERT INTO employee_info "
-                            + "(employee_id,firstName,lastName,position,salary,date) "
-                            + "VALUES(?,?,?,?,?,?)";
-
-                    prepare = connect.prepareStatement(insertInfo);
-                    prepare.setString(1, addEmployee_employeeID.getText());
-                    prepare.setString(2, addEmployee_firstName.getText());
-                    prepare.setString(3, addEmployee_lastName.getText());
-                    prepare.setString(4, (String) addEmployee_position.getSelectionModel().getSelectedItem());
-                    prepare.setString(5, "0.0");
-                    prepare.setString(6, String.valueOf(sqlDate));
-                    prepare.executeUpdate();
-
-                    alert = new Alert(AlertType.INFORMATION);
-                    alert.setTitle("Information Message");
-                    alert.setHeaderText(null);
-                    alert.setContentText("Successfully Added!");
-                    alert.showAndWait();
-
-                    addEmployeeShowListData();
-                    addEmployeeReset();
-                }
+                addEmployeeShowListData();
+                addEmployeeReset();
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
 
+    } catch (Exception e) {
+        e.printStackTrace();
     }
-
+}
     public void addEmployeeUpdate() {
 
         String uri = getData.path;
@@ -848,7 +897,7 @@ public class dashboardController implements Initializable {
             if (option.get().equals(ButtonType.OK)) {
 
                 logout.getScene().getWindow().hide();
-                Parent root = FXMLLoader.load(getClass().getResource("Sample.fxml"));
+                Parent root = FXMLLoader.load(getClass().getResource("Signin.fxml"));
                 Stage stage = new Stage();
                 Scene scene = new Scene(root);
 
